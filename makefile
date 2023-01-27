@@ -1,11 +1,13 @@
-S = server.o
-C = client.o 
+Server = server.o
+Client = client.o 
+OBJS = *.o
 
-server: $(wildcard server/*.c)
-	gcc -o $S $^ 
+serverObject: $(wildcard server/*.c)
+	gcc -o $(Server) $^ 
+	make clientObject
 
-client: $(wildcard client/*.c)
-	gcc -o $C $^
+clientObject: $(wildcard client/*.c)
+	gcc -o $(Client) $^
 
 # server: $(OBJS)
 # 	gcc $^ -o $@
