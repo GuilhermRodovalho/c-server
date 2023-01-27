@@ -46,6 +46,8 @@ int main(int argc, char **argv)
     }
     myPort = atoi(argv[1]);
 
+    // Aloca o socket (primeiro argumento fala que vai ser um socket de internet
+    // o segundo que é TCP
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {
         perror("socket");
@@ -58,17 +60,19 @@ int main(int argc, char **argv)
         }
     */
 
-    my_addr.sin_family = AF_INET;         // host byte order
+    my_addr.sin_family = AF_INET;         // especifica que é um endereço da internet
     my_addr.sin_port = htons(myPort);     // short, network byte order
-    my_addr.sin_addr.s_addr = INADDR_ANY; // automatically fill with my IP
+    my_addr.sin_addr.s_addr = INADDR_ANY; // aceita requisições de qualquer lugar
     memset(&(my_addr.sin_zero), '\0', 8); // zero the rest of the struct
 
+    // Associa esse socket a esse endereço
     if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == -1)
     {
         perror("bind");
         exit(1);
     }
 
+    // começa a ouvir conexões nesse socket
     if (listen(sockfd, BACKLOG) == -1)
     {
         perror("listen");
@@ -86,34 +90,47 @@ int main(int argc, char **argv)
 
     while (1)
     { // main accept() loop
+
         printf("Accepting ....\n");
         retVal = 0;
         sin_size = sizeof(struct sockaddr_in);
+        // aceita conexões, o segundo argumento é o endereço de quem fez a
+        // requisição, e o terceiro é o tamanho
         if ((new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size)) == -1)
         {
             perror("accept");
             continue;
         }
         printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
+        // retorna um processo filho para cuidar da requisição enquanto o processo
+        // pai continua cuidando de receber conexões
         if (!fork())
         { // this is the child process
+            // ignora o sinal que é mandado quando o filho morre :(
             signal(SIGCHLD, SIG_IGN);
             sleep(5);
             while (1)
             {
+                // aqui a mágica começa.
+                // Agora esse processo é o que vai cuidar da requisição
                 memset(buf, 0, MAXDATASIZE);
-                if ((retVal = read(new_fd, buf, MAXDATASIZE)) == -1)
+                if ((retVal = read(new_fd, buf, MAXDATASIZE - 1)) == -1)
                 {
                     perror("Receiving");
                     close(new_fd);
                     exit(-1);
                 }
+
+                printf("\n%s\n", buf);
+
+                // escreve no file descriptor (nosso caso a conexão TCP)
                 if ((retVal = write(new_fd, buf, retVal)) == -1)
                 {
                     perror("Sending");
                     close(new_fd);
                     exit(-1);
                 }
+                // se o client pediu pra parar a gente para
                 if (!strcmp(buf, "quit"))
                 {
                     printf("Connection closed by foreign host\n");
