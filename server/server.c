@@ -1,7 +1,7 @@
 /*
 ** server.c -- a stream socket server demo
 ** Server side program that is able to wait for a connection and answer with a
-** Hello World string to a client program
+** what the client sent back
 */
 
 #include <stdio.h>
@@ -15,6 +15,8 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+
+#include "api.h";
 
 #define MYPORT 3490     // the port users will be connecting to
 #define MAXDATASIZE 200 // max number of bytes we can get at once
@@ -122,6 +124,7 @@ int main(int argc, char **argv)
                 }
 
                 printf("\n%s\n", buf);
+                handle_request(buf);
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
                 if ((retVal = write(new_fd, buf, retVal)) == -1)
