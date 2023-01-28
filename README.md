@@ -36,6 +36,6 @@ endereco|token|flag_off
 
 ## Todo:
 
-- [] Mudar a flag de offline para online
-- [] funcionalidade de enviar mensagem
-- [] interface do cliente
+- [ ] Mudar a flag de offline para online
+- [ ] funcionalidade de enviar mensagem
+- [ ] interface do cliente
