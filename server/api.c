@@ -1,28 +1,41 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "helper.h"
+#include "base64.h"
 
-const char *login_file = "login_file.txt";
+const char *DATA_FILE = "data_file.txt";
 
-char *register_user(char *buf);
-int save_user_to_file(char *username, char *password);
-int should_save_user_to_file(char *username);
+char *login(char *buf);
+char *decode_testing(char *buf);
+char *encoder_helper(char *username, char *password);
+int save_token_to_file(char *token, int is_logged);
+int check_if_token_exists(char *username);
 
 /**
  * @brief
  * Função que lida com o request feito pelo usuário
  *
  * @param buf input do client
- * '0' (decimal 48) = função de registro
+ * '0' (decimal 48) = função de registro. Registra e retorna o token de acesso
  * '1' (decimal 49) = função de login
  * @return char* resposta
  */
-char *handle_request(char *buf)
+char *handle_request(char *buf, struct sockaddr_in *adress)
 {
     // funcao requisitada
     int function = (int)buf[0];
+
+    printf("Função pedida: %d\n", function);
+    printf("Dados do enviador\n");
+    printf("\tporta: %d\n", adress->sin_port);
+    printf("\tendereço: %d\n", adress->sin_addr.s_addr);
+    printf("\tzero?: %u\n", adress->sin_zero[0]);
+
+    printf("endereço convertido: %s\n", inet_ntoa(adress->sin_addr));
 
     // desconsidera o primeiro caractere
     buf++;
@@ -32,7 +45,10 @@ char *handle_request(char *buf)
     switch (function)
     {
     case 48:
-        result = register_user(buf);
+        result = login(buf);
+        break;
+    case 49:
+        result = decode_testing(buf);
         break;
 
     default:
@@ -44,78 +60,122 @@ char *handle_request(char *buf)
 
 /**
  * @brief
- * Cria um usuário, seguindo o format `username senha`
+ * Cria um token de usuário, seguindo o formato `username senha`
  *
- * @param buf input do client.
- * @return char* em caso de sucesso "registrado", "falha" em caso de falha
+ * @param buf input do client (usuario e senha).
+ * @return char* token. Contém o token gerado pela aplicação.
  */
-char *register_user(char *buf)
+char *login(char *buf)
 {
-    char *username = get_first_word(buf);
-    char *password = get_next_word(buf);
+    // separa a entrada em tokens divididos por |
+    char *username = strtok(buf, "|");
+    char *password = strtok(NULL, "|");
 
-    if (should_save_user_to_file(username) != 0)
+    printf("username: %s\npass: %s\n", username, password);
+
+    char *token = encoder_helper(username, password);
+
+    printf("token: %s\n", token);
+
+    if (check_if_token_exists(token) != 0)
     {
-        return "login already in use";
+        // deve alterar a flag para on
+        return "User is already logged in";
     }
 
-    if (save_user_to_file(username, password) == 1)
-    {
-        printf("deu ruim escrevendo no arquivo");
-    }
+    save_token_to_file(token, 1);
+
+    return token;
 }
 
-// 0 se deu tudo certo, 1 se deu erro
-int save_user_to_file(char *username, char *password)
+/**
+ * @brief
+ * Encoda em base64 a string no format "username password" e retorna o token
+ * Não é completamente seguro, pois o encodign pode ser revertido
+ *
+ *
+ * @param username usuário passado pelo client
+ * @param password senha
+ * @return char* token base64 gerado
+ */
+char *encoder_helper(char *username, char *password)
 {
-    FILE *user_file = fopen(login_file, "a");
-    if (user_file == NULL)
-    {
-        printf("error opening the file\n");
-        return 1;
-    }
-    fprintf(user_file, "%s\n%s\n", username, password);
+    char *userpass = malloc(strlen(username) + strlen(password) + 1);
+    strcpy(userpass, username);
+    strcat(userpass, " ");
+    strcat(userpass, password);
 
-    return 0;
+    size_t input_length = strlen(userpass);
+    size_t output_length;
+
+    char *encoded = base64_encode((unsigned char *)userpass, input_length, &output_length);
+
+    return encoded;
 }
 
-// retorna 0 se deve salvar o usuário no arquivo
-// 1 caso não deva (já existe outro usuário com esse login)
+char *decode_testing(char *buf)
+{
+
+    size_t decoded_length;
+    char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
+
+    printf("%s\n", decoded);
+    return decoded;
+}
+
+// retorna 0 se o token nao existir no arquivo
+// 1 caso já exista
 // 2 em caso de erro
-int should_save_user_to_file(char *username)
+int check_if_token_exists(char *token)
 {
-    char buffer[100];
-    if (access(login_file, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
+    char buffer[300];
+    if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
     {
         return 0;
     }
 
-    FILE *logins_file = fopen(login_file, "r");
-    if (logins_file == NULL)
+    FILE *tokens_file = fopen(DATA_FILE, "r");
+    if (tokens_file == NULL)
     {
         printf("error opening the file\n");
         return 2;
     }
 
-    while (fgets(buffer, 100, logins_file) != NULL)
+    while (fgets(buffer, 300, tokens_file) != NULL)
     {
         // remove \n no final
         int len = strlen(buffer);
         if (buffer[len - 1] == '\n')
             buffer[len - 1] = 0;
 
-        if (strcmp(buffer, username) == 0)
+        char *token = strtok(buffer, "|");
+        if (strcmp(buffer, token) == 0)
         {
             return 1;
         }
-
-        // joga fora a senha
-        // nao deveria entrar nesse if pq sempre tem que ser em pares (usuario e senha)
-        if (fgets(buffer, 100, logins_file) == NULL)
-        {
-            return 2;
-        }
     }
+
+    return 0;
+}
+
+/**
+ * @brief
+ * Salva o char *token no arquivo, com a flag is_logged.
+ *
+ * @param token
+ * @param is_logged 1 para logado, 0 para deslogado
+ * @return int 0 se deu certo, 1 se teve problema
+ */
+int save_token_to_file(char *token, int is_logged)
+{
+    FILE *user_file = fopen(DATA_FILE, "a");
+    if (user_file == NULL)
+    {
+        printf("error opening the file\n");
+        return 1;
+    }
+    // coloca um ao salvar
+    fprintf(user_file, "%s|%d", token, is_logged);
 
     return 0;
 }

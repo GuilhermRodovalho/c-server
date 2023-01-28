@@ -123,8 +123,7 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
 
-                printf("\n%s\n", buf);
-                handle_request(buf);
+                handle_request(buf, &their_addr);
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
                 if ((retVal = write(new_fd, buf, retVal)) == -1)
