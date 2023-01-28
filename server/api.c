@@ -9,11 +9,14 @@
 
 const char *DATA_FILE = "data_file.txt";
 
-char *login(char *buf);
+char *login(char *buf, const struct sockaddr_in *adress);
+char *logout(char *token);
 char *decode_testing(char *buf);
 char *encoder_helper(char *username, char *password);
-int save_token_to_file(char *token, int is_logged);
+int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged);
+int save_raw_data_to_file(char *data);
 int check_if_token_exists(char *username);
+char *delete_line_from_file(const char *file_name, const char *line_start);
 
 /**
  * @brief
@@ -24,38 +27,37 @@ int check_if_token_exists(char *username);
  * '1' (decimal 49) = função
  * @return char* resposta
  */
-char *handle_request(char *buf, struct sockaddr_in *adress)
+char *handle_request(char *buf, const struct sockaddr_in *adress)
 {
-    // funcao requisitada
-    int function = (int)buf[0];
+        // funcao requisitada
+        int function = (int)buf[0];
 
-    printf("Função pedida: %d\n", function);
-    printf("Dados do enviador\n");
-    printf("\tporta: %d\n", adress->sin_port);
-    printf("\tendereço: %d\n", adress->sin_addr.s_addr);
-    printf("\tzero?: %u\n", adress->sin_zero[0]);
+        // printf("Função pedida: %d\n", function);
+        // printf("Dados do enviador\n");
+        // printf("\tporta: %d\n", adress->sin_port);
+        // printf("\tendereço: %d\n", adress->sin_addr.s_addr);
+        // printf("\tzero?: %u\n", adress->sin_zero[0]);
 
-    printf("endereço convertido: %s\n", inet_ntoa(adress->sin_addr));
+        // printf("endereço convertido: %s\n", inet_ntoa(adress->sin_addr));
 
-    // desconsidera o primeiro caractere
-    buf++;
+        char *result = buf;
+        // desconsidera o primeiro caractere (o ideal seria criar outra variável)
+        buf++;
 
-    char *result = NULL;
+        switch (function)
+        {
+        case 48:
+                result = login(buf, adress);
+                break;
+        case 49:
+                result = logout(buf);
+                break;
 
-    switch (function)
-    {
-    case 48:
-        result = login(buf);
-        break;
-    case 49:
-        result = decode_testing(buf);
-        break;
+        default:
+                break;
+        }
 
-    default:
-        break;
-    }
-
-    return result;
+        return result;
 }
 
 /**
@@ -65,28 +67,41 @@ char *handle_request(char *buf, struct sockaddr_in *adress)
  * @param buf input do client (usuario e senha).
  * @return char* token. Contém o token gerado pela aplicação.
  */
-char *login(char *buf)
+char *login(char *buf, const struct sockaddr_in *adress)
 {
-    // separa a entrada em tokens divididos por |
-    char *username = strtok(buf, "|");
-    char *password = strtok(NULL, "|");
+        // separa a entrada em tokens divididos por |
+        char *username = strtok(buf, "|");
+        char *password = strtok(NULL, "|");
 
-    printf("username: %s\npass: %s\n", username, password);
+        char *token = encoder_helper(username, password);
 
-    char *token = encoder_helper(username, password);
+        if (check_if_token_exists(token) != 0)
+        {
+                /* caso o token já esteja no arquivo, basicamente deleta do arquivo (
+                provavelmente estava com a flag 0) e insere novamente com a flag 1 para
+                indicar que agora está logado.
+                */
+                printf("o token existe\n");
+                delete_line_from_file(DATA_FILE, token);
+                printf("retornou da funcao\n");
+        }
 
-    printf("token: %s\n", token);
+        save_data_to_file(token, adress, 1);
 
-    if (check_if_token_exists(token) != 0)
-    {
-        // TODO
-        // deve alterar a flag para on
-        return "User is already logged in";
-    }
+        printf("returning token=%s\n", token);
 
-    save_token_to_file(token, 1);
+        return token;
+}
 
-    return token;
+char *logout(char *buf)
+{
+        char *token = strtok(buf, "|");
+        char *line = delete_line_from_file(DATA_FILE, token);
+
+        // Muda o 1 para 0 para setar offline
+        line[strlen(line) - 2] = '0';
+
+        save_raw_data_to_file(line);
 }
 
 /**
@@ -101,27 +116,26 @@ char *login(char *buf)
  */
 char *encoder_helper(char *username, char *password)
 {
-    char *userpass = malloc(strlen(username) + strlen(password) + 1);
-    strcpy(userpass, username);
-    strcat(userpass, " ");
-    strcat(userpass, password);
+        char *userpass = malloc(strlen(username) + strlen(password) + 1);
+        strcpy(userpass, username);
+        strcat(userpass, " ");
+        strcat(userpass, password);
 
-    size_t input_length = strlen(userpass);
-    size_t output_length;
+        size_t input_length = strlen(userpass);
+        size_t output_length;
 
-    char *encoded = base64_encode((unsigned char *)userpass, input_length, &output_length);
+        char *encoded = base64_encode((unsigned char *)userpass, input_length, &output_length);
 
-    return encoded;
+        return encoded;
 }
 
 char *decode_testing(char *buf)
 {
 
-    size_t decoded_length;
-    char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
+        size_t decoded_length;
+        char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
 
-    printf("%s\n", decoded);
-    return decoded;
+        return decoded;
 }
 
 // retorna 0 se o token nao existir no arquivo
@@ -129,54 +143,119 @@ char *decode_testing(char *buf)
 // 2 em caso de erro
 int check_if_token_exists(char *token)
 {
-    char buffer[300];
-    if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
-    {
-        return 0;
-    }
-
-    FILE *tokens_file = fopen(DATA_FILE, "r");
-    if (tokens_file == NULL)
-    {
-        printf("error opening the file\n");
-        return 2;
-    }
-
-    while (fgets(buffer, 300, tokens_file) != NULL)
-    {
-        // remove \n no final
-        int len = strlen(buffer);
-        if (buffer[len - 1] == '\n')
-            buffer[len - 1] = 0;
-
-        char *token = strtok(buffer, "|");
-        if (strcmp(buffer, token) == 0)
+        char buffer[300];
+        if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
         {
-            return 1;
+                return 0;
         }
-    }
 
-    return 0;
+        FILE *tokens_file = fopen(DATA_FILE, "r");
+        if (tokens_file == NULL)
+        {
+                printf("error opening the file\n");
+                return 2;
+        }
+
+        while (fgets(buffer, 300, tokens_file) != NULL)
+        {
+                // remove \n no final
+                int len = strlen(buffer);
+                if (buffer[len - 1] == '\n')
+                        buffer[len - 1] = 0;
+
+                char *line_token = strtok(buffer, "|");
+                if (strcmp(line_token, token) == 0)
+                {
+                        return 1;
+                }
+        }
+
+        fclose(tokens_file);
+
+        return 0;
 }
 
 /**
  * @brief
- * Salva o char *token no arquivo, com a flag is_logged.
+ * Salva o char *token com endereço e is_logged no arquivo, com o seguindo o formato
+ * `token|endereco:porta|is_logged`
  *
  * @param token
+ * @param adress é a struct sockaddr_in do endereço do client
  * @param is_logged 1 para logado, 0 para deslogado
  * @return int 0 se deu certo, 1 se teve problema
  */
-int save_token_to_file(char *token, int is_logged)
+int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged)
 {
-    FILE *user_file = fopen(DATA_FILE, "a");
-    if (user_file == NULL)
-    {
-        printf("error opening the file\n");
-        return 1;
-    }
-    // coloca um ao salvar
-    fprintf(user_file, "%s|%d", token, is_logged);
+        FILE *user_file = fopen(DATA_FILE, "a");
+        if (user_file == NULL)
+        {
+                printf("error opening the file\n");
+                return 1;
+        }
+        // coloca um ao salvar
+        fprintf(user_file,
+                "%s|%d:%d|%d\n",
+                token,
+                adress->sin_addr.s_addr,
+                adress->sin_port,
+                is_logged);
 
-    return 0;
+        fclose(user_file);
+
+        return 0;
+}
+
+int save_raw_data_to_file(char *data)
+{
+        FILE *user_file = fopen(DATA_FILE, "a");
+        if (user_file == NULL)
+        {
+                printf("error opening the file\n");
+                return 1;
+        }
+        fprintf(user_file, "%s\n", data);
+
+        fclose(user_file);
+
+        return 0;
+}
+
+/**
+ * @brief
+ * Remove do arquivo file_name qualquer linha que começa com char *line_start
+ *
+ * @param file_name nome do arquivo
+ * @param line_start com o que deve comparar o início da linha
+ * @return a última linha que não foi deletada. Note que várias linhas podem ser
+ * deletadas caso comecem com line_start
+ */
+char *delete_line_from_file(const char *file_name, const char *line_start)
+{
+        char buffer[1024];
+        char tempFileName[] = "temp.txt";
+        FILE *file = fopen(file_name, "r");
+        FILE *tempFile = fopen(tempFileName, "w");
+
+        char *last_deleted_line = (char *)malloc(1024 * sizeof(char));
+
+        while (fgets(buffer, sizeof(buffer), file))
+        {
+                if (strncmp(buffer, line_start, strlen(line_start)) != 0)
+                {
+                        fputs(buffer, tempFile);
+                }
+                else
+                {
+                        strcpy(last_deleted_line, buffer);
+                }
+        }
+
+        fclose(file);
+        fclose(tempFile);
+
+        remove(file_name);
+        rename(tempFileName, file_name);
+
+        return last_deleted_line;
 }

@@ -10,6 +10,12 @@ serverObject: $(wildcard server/*.c)
 clientObject: $(wildcard client/*.c)
 	gcc -o $(Client) $^
 
+run-server:
+	./server.o 8000
+
+run-client:
+	./client.o localhost 8000 
+
 # server: $(OBJS)
 # 	gcc $^ -o $@
 

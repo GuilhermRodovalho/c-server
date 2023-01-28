@@ -123,10 +123,17 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
 
-                handle_request(buf, &their_addr);
+                char *res = handle_request(buf, &their_addr);
+
+                printf("Retornando %s\n", res);
+                printf("para o FD: %d\n", new_fd);
+                printf("Dados do enviador\n");
+                printf("\tporta: %d\n", their_addr.sin_port);
+                printf("\tendereço: %d\n", their_addr.sin_addr.s_addr);
+                printf("\tzero?: %u\n", their_addr.sin_zero[0]);
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
-                if ((retVal = write(new_fd, buf, retVal)) == -1)
+                if ((retVal = write(new_fd, res, strlen(res))) == -1)
                 {
                     perror("Sending");
                     close(new_fd);
