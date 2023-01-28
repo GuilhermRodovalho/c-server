@@ -3,4 +3,4 @@
 
 char *handle_request(char *buf);
 
-#endif // FOO_H_
+#endif
