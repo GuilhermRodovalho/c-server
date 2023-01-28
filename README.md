@@ -33,3 +33,9 @@ Identificador_func_logout|token
 O Server vai no arquivo, e altera a string, setando para
 
 endereco|token|flag_off
+
+## Todo:
+
+- [] Mudar a flag de offline para online
+- [] funcionalidade de enviar mensagem
+- [] interface do cliente

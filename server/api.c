@@ -20,8 +20,8 @@ int check_if_token_exists(char *username);
  * Função que lida com o request feito pelo usuário
  *
  * @param buf input do client
- * '0' (decimal 48) = função de registro. Registra e retorna o token de acesso
- * '1' (decimal 49) = função de login
+ * '0' (decimal 48) = função de login. Registra e retorna o token de acesso
+ * '1' (decimal 49) = função
  * @return char* resposta
  */
 char *handle_request(char *buf, struct sockaddr_in *adress)
@@ -79,6 +79,7 @@ char *login(char *buf)
 
     if (check_if_token_exists(token) != 0)
     {
+        // TODO
         // deve alterar a flag para on
         return "User is already logged in";
     }
