@@ -75,12 +75,15 @@ char *login(char *buf, const struct sockaddr_in *adress)
 
         char *token = encoder_helper(username, password);
 
+        printf("t: [%s]\n", token);
+
         if (check_if_token_exists(token) != 0)
         {
                 /* caso o token já esteja no arquivo, basicamente deleta do arquivo (
                 provavelmente estava com a flag 0) e insere novamente com a flag 1 para
                 indicar que agora está logado.
                 */
+
                 delete_line_from_file(DATA_FILE, token);
         }
 
@@ -116,7 +119,7 @@ char *logout(char *buf)
  */
 char *encoder_helper(char *username, char *password)
 {
-        char *userpass = malloc(strlen(username) + strlen(password) + 1);
+        unsigned char *userpass = malloc(strlen(username) + strlen(password) + 1);
         strcpy(userpass, username);
         strcat(userpass, " ");
         strcat(userpass, password);
@@ -124,7 +127,7 @@ char *encoder_helper(char *username, char *password)
         size_t input_length = strlen(userpass);
         size_t output_length;
 
-        char *encoded = base64_encode((unsigned char *)userpass, input_length, &output_length);
+        char *encoded = base64_encode(userpass, input_length, &output_length);
 
         return encoded;
 }
@@ -232,18 +235,21 @@ int save_raw_data_to_file(char *data)
  */
 char *delete_line_from_file(const char *file_name, const char *line_start)
 {
-        char buffer[1024];
+        char buffer[200];
         char tempFileName[] = "temp.txt";
         FILE *file = fopen(file_name, "r");
         FILE *tempFile = fopen(tempFileName, "w");
 
-        char *last_deleted_line = (char *)malloc(1024 * sizeof(char));
+        char *last_deleted_line = (char *)malloc(200 * sizeof(char));
 
         while (fgets(buffer, sizeof(buffer), file))
         {
+                if (strlen(buffer) <= 1)
+                        continue;
+
                 if (strncmp(buffer, line_start, strlen(line_start)) != 0)
                 {
-                        fprintf(tempFile, "%s\n", buffer);
+                        fprintf(tempFile, "%s", buffer);
                 }
                 else
                 {
