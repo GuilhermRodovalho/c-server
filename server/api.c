@@ -15,7 +15,7 @@ char *decode_testing(char *buf);
 char *encoder_helper(char *username, char *password);
 int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged);
 int save_raw_data_to_file(char *data);
-int check_if_token_exists(char *username);
+int check_if_token_exists(const char *username);
 char *delete_line_from_file(const char *file_name, const char *line_start);
 
 /**
@@ -81,9 +81,7 @@ char *login(char *buf, const struct sockaddr_in *adress)
                 provavelmente estava com a flag 0) e insere novamente com a flag 1 para
                 indicar que agora está logado.
                 */
-                printf("o token existe\n");
                 delete_line_from_file(DATA_FILE, token);
-                printf("retornou da funcao\n");
         }
 
         save_data_to_file(token, adress, 1);
@@ -102,6 +100,8 @@ char *logout(char *buf)
         line[strlen(line) - 2] = '0';
 
         save_raw_data_to_file(line);
+
+        return "deu bom";
 }
 
 /**
@@ -141,7 +141,7 @@ char *decode_testing(char *buf)
 // retorna 0 se o token nao existir no arquivo
 // 1 caso já exista
 // 2 em caso de erro
-int check_if_token_exists(char *token)
+int check_if_token_exists(const char *token)
 {
         char buffer[300];
         if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
@@ -243,7 +243,7 @@ char *delete_line_from_file(const char *file_name, const char *line_start)
         {
                 if (strncmp(buffer, line_start, strlen(line_start)) != 0)
                 {
-                        fputs(buffer, tempFile);
+                        fprintf(tempFile, "%s\n", buffer);
                 }
                 else
                 {
