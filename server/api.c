@@ -225,7 +225,10 @@ int save_raw_data_to_file(char *data)
 }
 
 /**
+ * @todo
+ * Todo arrumar a função que não delelta direito as vezes
  * @brief
+ *
  * Remove do arquivo file_name qualquer linha que começa com char *line_start
  *
  * @param file_name nome do arquivo
@@ -240,7 +243,7 @@ char *delete_line_from_file(const char *file_name, const char *line_start)
         FILE *file = fopen(file_name, "r");
         FILE *tempFile = fopen(tempFileName, "w");
 
-        char *last_deleted_line = (char *)malloc(200 * sizeof(char));
+        char *last_deleted_line = (char *)calloc(200, sizeof(char));
 
         while (fgets(buffer, sizeof(buffer), file))
         {
@@ -260,7 +263,10 @@ char *delete_line_from_file(const char *file_name, const char *line_start)
         fclose(file);
         fclose(tempFile);
 
-        remove(file_name);
+        if (remove(file_name) != 0)
+        {
+                printf("aconteceu algo na hora de deletar o arquivo");
+        }
         rename(tempFileName, file_name);
 
         return last_deleted_line;
