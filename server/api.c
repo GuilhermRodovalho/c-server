@@ -217,7 +217,7 @@ int save_raw_data_to_file(char *data)
                 printf("error opening the file\n");
                 return 1;
         }
-        fprintf(user_file, "%s\n", data);
+        fputs(data, user_file);
 
         fclose(user_file);
 
@@ -252,7 +252,7 @@ char *delete_line_from_file(const char *file_name, const char *line_start)
 
                 if (strncmp(buffer, line_start, strlen(line_start)) != 0)
                 {
-                        fprintf(tempFile, "%s", buffer);
+                        fputs(buffer, tempFile);
                 }
                 else
                 {
