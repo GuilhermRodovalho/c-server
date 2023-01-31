@@ -129,6 +129,10 @@ char *encoder_helper(char *username, char *password)
 
         char *encoded = base64_encode(userpass, input_length, &output_length);
 
+        encoded[output_length] = 0;
+
+        free(userpass);
+
         return encoded;
 }
 
