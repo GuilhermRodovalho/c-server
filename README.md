@@ -38,6 +38,6 @@ token|endereco|flag_off
 
 - [x] Mudar a flag de offline para online
 - [x] Corrigir bug de fazer login duas vezes e apagar os dados
-- [ ] Corrigir logout
+- [x] Corrigir logout
 - [ ] funcionalidade de enviar mensagem
 - [ ] interface do cliente
