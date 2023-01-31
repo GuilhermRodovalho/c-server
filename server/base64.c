@@ -23,7 +23,7 @@ char *base64_encode(const unsigned char *data,
 
     *output_length = 4 * ((input_length + 2) / 3);
 
-    char *encoded_data = malloc(*output_length);
+    char *encoded_data = malloc(*output_length + 1);
     if (encoded_data == NULL)
         return NULL;
 

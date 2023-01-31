@@ -123,11 +123,16 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
 
-                char *res = handle_request(buf, &their_addr);
+                char *res = buf;
+                if (strcmp(buf, "quit") != 0)
+                {
+                    res = handle_request(buf, &their_addr);
+                }
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
                 if ((retVal = write(new_fd, res, strlen(res))) == -1)
                 {
+                    free(res);
                     perror("Sending");
                     close(new_fd);
                     exit(-1);
@@ -139,6 +144,11 @@ int main(int argc, char **argv)
                     sleep(1);
                     close(new_fd);
                     exit(-1);
+                }
+
+                if (strcmp("deu bom", res) != 0)
+                {
+                    free(res);
                 }
             }
         }

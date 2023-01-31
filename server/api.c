@@ -75,8 +75,6 @@ char *login(char *buf, const struct sockaddr_in *adress)
 
         char *token = encoder_helper(username, password);
 
-        printf("t: [%s]\n", token);
-
         if (check_if_token_exists(token) != 0)
         {
                 /* caso o token já esteja no arquivo, basicamente deleta do arquivo (
@@ -84,12 +82,11 @@ char *login(char *buf, const struct sockaddr_in *adress)
                 indicar que agora está logado.
                 */
 
-                delete_line_from_file(DATA_FILE, token);
+                char *trash = delete_line_from_file(DATA_FILE, token);
+                free(trash);
         }
 
         save_data_to_file(token, adress, 1);
-
-        printf("returning token=%s\n", token);
 
         return token;
 }
@@ -103,6 +100,8 @@ char *logout(char *buf)
         line[strlen(line) - 2] = '0';
 
         save_raw_data_to_file(line);
+
+        free(line);
 
         return "deu bom";
 }
@@ -119,7 +118,7 @@ char *logout(char *buf)
  */
 char *encoder_helper(char *username, char *password)
 {
-        unsigned char *userpass = malloc(strlen(username) + strlen(password) + 1);
+        unsigned char *userpass = malloc(strlen(username) + strlen(password) + 3);
         strcpy(userpass, username);
         strcat(userpass, " ");
         strcat(userpass, password);

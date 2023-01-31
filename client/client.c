@@ -15,6 +15,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
+#include "user_input.h"
+
 #define PORT 3490 // the port client will be connecting to
 
 #define MAXDATASIZE 100 // max number of bytes we can get at once
@@ -89,20 +91,23 @@ int main(int argc, char *argv[])
     }
 
     printf("Connected ....\n");
+    memset(iBuf, 0, MAXDATASIZE);
     while (1)
     {
         memset(oBuf, 0, MAXDATASIZE);
-        printf("Input: ");
-        fgets(oBuf, MAXDATASIZE - 1, stdin);
-        oBuf[strlen(oBuf) - 1] = 0;
+        // deve pegar os dados do usuário aqui
+        char *trash = get_user_input(iBuf);
+        strcpy(oBuf, trash);
+
+        oBuf[strlen(oBuf)] = 0;
 
         write(sockfd, oBuf, strlen(oBuf));
 
-        printf("Waiting....\n");
+        printf("\n\tWaiting server....\n");
         memset(iBuf, 0, MAXDATASIZE);
         if ((numbytes = read(sockfd, iBuf, MAXDATASIZE)) > 0)
         {
-            printf("Received [%s] with %d bytes\n", iBuf, numbytes);
+            printf("\n\tReceived [%s] with %d bytes\n", iBuf, numbytes);
         }
         if (!strcmp(iBuf, "quit"))
         {
@@ -110,5 +115,6 @@ int main(int argc, char *argv[])
             close(sockfd);
             exit(0);
         }
+        free(trash);
     }
 }
