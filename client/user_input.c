@@ -67,6 +67,7 @@ char *show_logged_options(char *token)
         printf("1. Logout\n");
         printf("2. Send message\n");
         printf("3. Receive messages\n");
+        printf("4. List logged users\n");
         printf("Enter your choice: ");
         scanf("%d", &option);
         getc(stdin); // tira o \n que ficou no buffer
@@ -81,6 +82,8 @@ char *show_logged_options(char *token)
         case 3:
             return "3|receive_messages";
             break;
+        case 4:
+            return "4";
         default:
             printf("Invalid option, please try again\n");
             break;
@@ -127,8 +130,8 @@ char *build_message_request(char *token)
     char *response = malloc(360 * sizeof(char));
     memset(response, 0, 360);
 
-    char recipientAddress[100], message[160];  
-    memset(recipientAddress, 0, 100);    
+    char recipientAddress[100], message[160];
+    memset(recipientAddress, 0, 100);
     memset(message, 0, 160);
 
     printf("Send message option selected\n");

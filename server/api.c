@@ -12,13 +12,14 @@ const char *DATA_FILE = "data_file.txt";
 char *login(char *buf, const struct sockaddr_in *adress);
 char *logout(char *token);
 char *sendMessage(char *buf, int sockfd);
-char *decode_testing(char *buf);
+char *decode(char *buf);
 char *encoder_helper(char *username, char *password);
 int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged);
 int save_raw_data_to_file(char *data);
 int check_if_token_exists(const char *username);
 char *delete_line_from_file(const char *file_name, const char *line_start);
 int is_recipient_online(const char *recipientAddress);
+char *returnOnlineUsers();
 
 /**
  * @brief
@@ -26,7 +27,10 @@ int is_recipient_online(const char *recipientAddress);
  *
  * @param buf input do client
  * '0' (decimal 48) = função de login. Registra e retorna o token de acesso
- * '1' (decimal 49) = função
+ * '1' (decimal 49) = função de logout
+ * '2' (decimal 50) = função de enviar msg
+ * '3' (decimal 51) = função de receber ms
+ * '4' (decimal 52) = função de listar usuários
  * @return char* resposta
  */
 char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
@@ -48,17 +52,21 @@ char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
 
         switch (function)
         {
-                case 48:
-                        result = login(buf, adress);
-                        break;
-                case 49:
-                        result = logout(buf);
-                        break;
-                case 50:
-                        result = sendMessage(buf, sockfd);
-                        break;
-                default:
-                        break;
+        case 48:
+                result = login(buf, adress);
+                break;
+        case 49:
+                result = logout(buf);
+                break;
+        case 50:
+                result = sendMessage(buf, sockfd);
+                break;
+
+        case 52:
+                result = returnOnlineUsers();
+                break;
+        default:
+                break;
         }
 
         return result;
@@ -118,10 +126,10 @@ char *sendMessage(char *buf, int sockfd)
         char *message;
 
         char *aux = strtok(buf, "|");
-        
+
         aux = strtok(NULL, "|");
         address = aux;
-        
+
         aux = strtok(NULL, "|");
         message = aux;
 
@@ -129,7 +137,7 @@ char *sendMessage(char *buf, int sockfd)
         {
                 char *s_addr;
                 char *port;
-                
+
                 char *temp = strtok(address, ":");
                 s_addr = temp;
 
@@ -209,7 +217,7 @@ char *encoder_helper(char *username, char *password)
         return encoded;
 }
 
-char *decode_testing(char *buf)
+char *decode(char *buf)
 {
         size_t decoded_length;
         char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
@@ -281,7 +289,7 @@ int is_recipient_online(const char *recipientAddress)
 
                 if (strcmp(address, recipientAddress) == 0)
                 {
-                        if (buffer[strlen(buffer) - 2] = '1')//O destinatário está online
+                        if (buffer[strlen(buffer) - 2] = '1') // O destinatário está online
                                 return 1;
                         return 0;
                 }
@@ -290,6 +298,43 @@ int is_recipient_online(const char *recipientAddress)
         fclose(tokens_file);
 
         return 0;
+}
+
+char *returnOnlineUsers()
+{
+        char buffer[300];
+        if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
+        {
+                return 0;
+        }
+
+        FILE *tokens_file = fopen(DATA_FILE, "r");
+        if (tokens_file == NULL)
+        {
+                printf("error opening the file\n");
+                return NULL;
+        }
+        char *response = calloc(10000, 1);
+        response[0] = 0;
+
+        while (fgets(buffer, 300, tokens_file) != NULL)
+        {
+                printf("buffer: %s\n", buffer);
+                char *token = strtok(buffer, "|");
+                char *decoded_token = decode(token);
+                char *address = strtok(NULL, "|");
+
+                strcat(response, decoded_token);
+                strcat(response, "|");
+                strcat(response, address);
+                strcat(response, "\n");
+        }
+
+        printf("response: %s\n", response);
+
+        fclose(tokens_file);
+
+        return response;
 }
 
 /**

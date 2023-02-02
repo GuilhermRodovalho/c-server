@@ -148,7 +148,8 @@ int main(int argc, char **argv)
 
                 if (strcmp("logout performed", res) != 0)
                 {
-                    free(res);
+                    if (res != NULL)
+                        free(res);
                 }
             }
         }
