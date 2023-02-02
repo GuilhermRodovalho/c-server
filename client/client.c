@@ -44,12 +44,14 @@ void sigHandler()
     fprintf(stderr, "*** Pegou um sinal ***\n");
 }
 
-void showMessages(Queue *queue){
+void showMessages(Queue *queue)
+{
     if (queue_size(queue) == 0)
     {
         printf("\nThere is no message\n");
     }
-    else{
+    else
+    {
         int index = 1;
         int size = queue_size(queue);
 
@@ -67,7 +69,6 @@ void showMessages(Queue *queue){
 
             index++;
         }
-
     }
     printf("\n");
 }
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
         choosenOption = oBuf[0];
 
         // opção de receber mensagem -> mostrar mensagens na fila
-        if (choosenOption == '3' && strlen(token) > 0) 
+        if (choosenOption == '3' && strlen(token) > 0)
         {
             showMessages(messagesQueue);
         }
@@ -158,7 +159,7 @@ int main(int argc, char *argv[])
             {
                 token = '\0';
             }
-            else if (strcmp("logout performed", iBuf) != 0 && strcmp("sent", iBuf) != 0) // recebeu uma mensagem
+            else if (strcmp("logout performed", iBuf) != 0 && strcmp("sent", iBuf) != 0 && strcmp("not sent", iBuf) != 0) // recebeu uma mensagem
             {
                 push(messagesQueue, iBuf);
             }
