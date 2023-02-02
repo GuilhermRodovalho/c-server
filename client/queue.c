@@ -44,14 +44,13 @@ int free_queue(Queue *queue)
   return SUCCESS;
 }
 
-int get_queue(Queue *queue, char *str)
+char *get_queue(Queue *queue)
 {
   if (queue == NULL)
-    return INVALID_NULL_POINTER;
+    return "";
   if (queue->size == 0)
-    return OUT_OF_RANGE;
-  str = queue->begin->data;
-  return SUCCESS;
+    return "";
+  return queue->begin->data;
 }
 
 int push(Queue *queue, char *str)
@@ -63,8 +62,9 @@ int push(Queue *queue, char *str)
     return OUT_OF_MEMORY;
   node->data = str;
   node->next = NULL;
+
   if (queue->begin == NULL)
-  { 
+  {
     queue->begin = node;
     queue->end = node;
     queue->begin->prev = NULL;
@@ -97,7 +97,6 @@ int pop(Queue *queue)
   {
     queueNode *aux = queue->begin;
     queue->begin = NULL;
-    free(aux->data);
     free(aux);
     queue->end = NULL;
   }

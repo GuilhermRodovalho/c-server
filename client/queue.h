@@ -12,7 +12,7 @@ typedef struct queueNode queueNode;
 
 Queue *create_queue();
 int free_queue(Queue *queue);
-int get_queue(Queue *queue, char *str);
+char *get_queue(Queue *queue);
 int push(Queue *queue, char *str);
 int queue_size(Queue *queue);
 int pop(Queue *queue);

@@ -1,6 +1,6 @@
-#include "queue.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "queue.h"
 
 int main()
 {
@@ -16,18 +16,11 @@ int main()
 
   int total = queue_size(queue);
 
-  printf("cheguei\n");
-
   int size = queue_size(queue);
-
-  printf("tururu");
 
   while (size > 0)
   {
-    printf("cheguei 2");
-    char *strAux;
-
-    get_queue(queue, strAux);
+    char *strAux = get_queue(queue);
 
     printf("%s\n", strAux);
 
