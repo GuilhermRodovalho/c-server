@@ -126,7 +126,7 @@ int main(int argc, char **argv)
                 char *res = buf;
                 if (strcmp(buf, "quit") != 0)
                 {
-                    res = handle_request(buf, &their_addr);
+                    res = handle_request(buf, &their_addr, sockfd);
                 }
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
@@ -146,7 +146,7 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
 
-                if (strcmp("deu bom", res) != 0)
+                if (strcmp("logout performed", res) != 0)
                 {
                     free(res);
                 }

@@ -4,19 +4,21 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "helper.h"
+#include "../helpers/helper.h"
 #include "base64.h"
 
 const char *DATA_FILE = "data_file.txt";
 
 char *login(char *buf, const struct sockaddr_in *adress);
 char *logout(char *token);
+char *sendMessage(char *buf, int sockfd);
 char *decode_testing(char *buf);
 char *encoder_helper(char *username, char *password);
 int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged);
 int save_raw_data_to_file(char *data);
 int check_if_token_exists(const char *username);
 char *delete_line_from_file(const char *file_name, const char *line_start);
+int is_recipient_online(const char *recipientAddress);
 
 /**
  * @brief
@@ -27,7 +29,7 @@ char *delete_line_from_file(const char *file_name, const char *line_start);
  * '1' (decimal 49) = função
  * @return char* resposta
  */
-char *handle_request(char *buf, const struct sockaddr_in *adress)
+char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
 {
         // funcao requisitada
         int function = (int)buf[0];
@@ -46,15 +48,17 @@ char *handle_request(char *buf, const struct sockaddr_in *adress)
 
         switch (function)
         {
-        case 48:
-                result = login(buf, adress);
-                break;
-        case 49:
-                result = logout(buf);
-                break;
-
-        default:
-                break;
+                case 48:
+                        result = login(buf, adress);
+                        break;
+                case 49:
+                        result = logout(buf);
+                        break;
+                case 50:
+                        result = sendMessage(buf, sockfd);
+                        break;
+                default:
+                        break;
         }
 
         return result;
@@ -103,7 +107,61 @@ char *logout(char *buf)
 
         free(line);
 
-        return "deu bom";
+        return "logout performed";
+}
+
+char *sendMessage(char *buf, int sockfd)
+{
+        buf++;
+
+        char *address;
+        char *message;
+
+        char *aux = strtok(buf, "|");
+        
+        aux = strtok(NULL, "|");
+        address = aux;
+        
+        aux = strtok(NULL, "|");
+        message = aux;
+
+        if (is_recipient_online(address) == 1)
+        {
+                printf("Try to send the message %s to user's address %s\n", message, address);
+
+                char *s_addr;
+                char *port;
+                
+                char *temp = strtok(address, ":");
+                s_addr = temp;
+
+                temp = strtok(NULL, ":");
+                port = temp;
+
+                // Logica para envio de mensagem
+
+                struct sockaddr_in recipient_addr;
+                recipient_addr.sin_family = AF_INET;
+                recipient_addr.sin_port = (unsigned short)strtoul(port, NULL, 0);
+                recipient_addr.sin_addr.s_addr = htons((unsigned short) strtoul(s_addr, NULL, 0));
+                memset(&(recipient_addr.sin_zero), '\0', 8);
+
+                socklen_t sin_size = sizeof(struct sockaddr_in);
+
+                int new_fd, retVal;
+
+                if ((new_fd = accept(sockfd, (struct sockaddr *)&recipient_addr, &sin_size)) == -1)
+                {
+                        if ((retVal = write(new_fd, message, strlen(message))) == -1)
+                        {
+                                perror("Sending");
+                                close(new_fd);
+                                exit(-1);
+                        }
+                }
+        }
+
+        return "send";
 }
 
 /**
@@ -137,7 +195,6 @@ char *encoder_helper(char *username, char *password)
 
 char *decode_testing(char *buf)
 {
-
         size_t decoded_length;
         char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
 
@@ -173,6 +230,44 @@ int check_if_token_exists(const char *token)
                 if (strcmp(line_token, token) == 0)
                 {
                         return 1;
+                }
+        }
+
+        fclose(tokens_file);
+
+        return 0;
+}
+
+int is_recipient_online(const char *recipientAddress)
+{
+        char buffer[300];
+        if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
+        {
+                return 0;
+        }
+
+        FILE *tokens_file = fopen(DATA_FILE, "r");
+        if (tokens_file == NULL)
+        {
+                printf("error opening the file\n");
+                return 2;
+        }
+
+        while (fgets(buffer, 300, tokens_file) != NULL)
+        {
+                // remove \n no final
+                int len = strlen(buffer);
+                if (buffer[len - 1] == '\n')
+                        buffer[len - 1] = 0;
+
+                char *address = strtok(buffer, "|");
+                address = strtok(NULL, "|");
+
+                if (strcmp(address, recipientAddress) == 0)
+                {
+                        if (buffer[strlen(buffer) - 2] = '1')//O destinatário está online
+                                return 1;
+                        return 0;
                 }
         }
 
