@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "user_input.h"
 
@@ -11,8 +12,21 @@ char *show_logged_options(char *last_server_response);
 char *build_logout_request(char *last_server_response);
 char *build_message_request(char *token);
 
-char *get_user_input(char *last_server_response, char *token)
+char *get_user_input(char *last_server_response, char *token, bool mostrarResposta)
 {
+    if (mostrarResposta)
+    {
+        printf("Usuários:\n");
+        char currentChar;
+        int i = 0;
+        while (currentChar = last_server_response[i])
+        {
+            printf("%c", currentChar);
+
+            i++;
+        }
+    }
+
     if (strnlen(last_server_response, 2) == 0 || strcmp("logout performed", last_server_response) == 0)
     {
         return show_not_logged_options();
@@ -67,7 +81,7 @@ char *show_logged_options(char *token)
         printf("1. Logout\n");
         printf("2. Send message\n");
         printf("3. Receive messages\n");
-        printf("4. List logged users\n");
+        printf("4. List all users\n");
         printf("Enter your choice: ");
         scanf("%d", &option);
         getc(stdin); // tira o \n que ficou no buffer
@@ -83,7 +97,9 @@ char *show_logged_options(char *token)
             return "3|receive_messages";
             break;
         case 4:
-            return "4";
+            char *ponteiroNecessario = calloc(2, 1);
+            strcat(ponteiroNecessario, "4");
+            return ponteiroNecessario;
         default:
             printf("Invalid option, please try again\n");
             break;

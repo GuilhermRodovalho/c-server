@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <stdbool.h>
 
 #include "user_input.h"
 #include "queue.h"
@@ -21,7 +22,7 @@
 
 #define PORT 3490 // the port client will be connecting to
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once
+#define MAXDATASIZE 5000 // max number of bytes we can get at once
 
 enum t_state
 {
@@ -126,13 +127,15 @@ int main(int argc, char *argv[])
 
     printf("Connected ....\n");
     memset(iBuf, 0, MAXDATASIZE);
+    memset(oBuf, 0, MAXDATASIZE);
     while (1)
     {
+        bool ultimaOpcaoEscolhidaFoi4 = strcmp(oBuf, "4") == 0; //
         memset(oBuf, 0, MAXDATASIZE);
         char choosenOption;
 
         // deve pegar os dados do usuário aqui
-        char *trash = get_user_input(iBuf, token);
+        char *trash = get_user_input(iBuf, token, ultimaOpcaoEscolhidaFoi4);
         strcpy(oBuf, trash);
 
         choosenOption = oBuf[0];

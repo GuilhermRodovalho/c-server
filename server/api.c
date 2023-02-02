@@ -303,7 +303,6 @@ char *returnOnlineUsers()
 
         while (fgets(buffer, 300, tokens_file) != NULL)
         {
-                printf("buffer: %s\n", buffer);
                 char *token = strtok(buffer, "|");
                 char *decoded_token = decode(token);
                 char *address = strtok(NULL, "|");
