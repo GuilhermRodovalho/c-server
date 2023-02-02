@@ -103,7 +103,7 @@ int main(int argc, char **argv)
             perror("accept");
             continue;
         }
-        printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
+        printf("server: got connection from address %d, port %d\n", their_addr.sin_addr.s_addr, their_addr.sin_port);
         // retorna um processo filho para cuidar da requisição enquanto o processo
         // pai continua cuidando de receber conexões
         if (!fork())

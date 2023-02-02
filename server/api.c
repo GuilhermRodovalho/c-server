@@ -135,8 +135,6 @@ char *sendMessage(char *buf, int sockfd)
 
         if (is_recipient_online(address) == 1)
         {
-                printf("Try to send the message %s to user's address %s\n", message, address);
-
                 char *s_addr;
                 char *port;
 
@@ -146,13 +144,16 @@ char *sendMessage(char *buf, int sockfd)
                 temp = strtok(NULL, ":");
                 port = temp;
 
-                // Logica para envio de mensagem
+                struct in_addr sin_addr;
+                sin_addr.s_addr = (in_addr_t)atoi(s_addr);
 
                 struct sockaddr_in recipient_addr;
                 recipient_addr.sin_family = AF_INET;
                 recipient_addr.sin_port = (unsigned short)strtoul(port, NULL, 0);
-                recipient_addr.sin_addr.s_addr = htons((unsigned short)strtoul(s_addr, NULL, 0));
+                recipient_addr.sin_addr = sin_addr;
                 memset(&(recipient_addr.sin_zero), '\0', 8);
+
+                printf("Try to send the message %s to user's port %d and user's address %d\n", message, recipient_addr.sin_port, recipient_addr.sin_addr.s_addr);
 
                 socklen_t sin_size = sizeof(struct sockaddr_in);
 
@@ -160,17 +161,32 @@ char *sendMessage(char *buf, int sockfd)
 
                 if ((new_fd = accept(sockfd, (struct sockaddr *)&recipient_addr, &sin_size)) == -1)
                 {
+                        printf("deu ruim\n");
+
+                        perror("accept");
+
+                        close(new_fd);
+
+                        return "not sent";
+                }
+                else
+                {
+                        printf("Sending message...\n");
+
                         if ((retVal = write(new_fd, message, strlen(message))) == -1)
                         {
-                                perror("Sending");
+                                perror("send");
                                 close(new_fd);
                                 exit(-1);
                         }
+
+                        close(new_fd);
+
+                        return "sent";
                 }
         }
-
-        return "send";
 }
+
 
 /**
  * @brief
