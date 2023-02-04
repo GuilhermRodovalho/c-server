@@ -12,6 +12,15 @@ char *show_logged_options(char *last_server_response);
 char *build_logout_request(char *last_server_response);
 char *build_message_request(char *token);
 
+/**
+ * @brief Esta função é responsável por exibir uma mensagem de saída para o usuário, baseado em sua resposta anterior do servidor, seu token atual e uma flag indicando se a resposta do servidor deve ser exibida.
+ *
+ * @param last_server_response A resposta do servidor anterior.
+ * @param token O token atual do usuário.
+ * @param mostrarResposta Flag indicando se a resposta do servidor deve ser exibida.
+ *
+ * @return char* Retorna uma string representando o que deve ser enviado para o servidor
+ */
 char *get_user_input(char *last_server_response, char *token, bool mostrarResposta)
 {
     if (mostrarResposta)
