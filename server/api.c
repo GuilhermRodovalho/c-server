@@ -31,6 +31,8 @@ char *returnOnlineUsers();
  * '2' (decimal 50) = função de enviar msg
  * '3' (decimal 51) = função de receber ms
  * '4' (decimal 52) = função de listar usuários
+ * @param adress estrutura com as informações do endereço do cliente
+ * @param sockfd socket file descriptor
  * @return char* resposta
  */
 char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
@@ -77,6 +79,7 @@ char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
  * Cria um token de usuário, seguindo o formato `username senha`
  *
  * @param buf input do client (usuario e senha).
+ * @param adress estrutura com as informações do endereço do cliente
  * @return char* token. Contém o token gerado pela aplicação.
  */
 char *login(char *buf, const struct sockaddr_in *adress)
@@ -103,6 +106,13 @@ char *login(char *buf, const struct sockaddr_in *adress)
         return token;
 }
 
+/**
+ * @brief
+ * Desfaz o processo de login, marcando o usuário como offline
+ *
+ * @param buf token de usuário começando com |
+ * @return char* "logout realizado"
+ */
 char *logout(char *buf)
 {
         char *token = strtok(buf, "|");
@@ -118,6 +128,14 @@ char *logout(char *buf)
         return "logout performed";
 }
 
+/**
+ * @brief
+ * Envia uma mensagem a um usuário específico
+ *
+ * @param buf mensagem a ser enviada. Deve conter o destinatário no formato `recipient_address|message`
+ * @param sockfd socket file descriptor
+ * @return char* mensagem de sucesso ou fracasso na operação
+ */
 char *sendMessage(char *buf, int sockfd)
 {
         buf++;
@@ -187,16 +205,13 @@ char *sendMessage(char *buf, int sockfd)
         }
 }
 
-
 /**
  * @brief
- * Encoda em base64 a string no format "username password" e retorna o token
- * Não é completamente seguro, pois o encodign pode ser revertido
+ * Auxiliar na geração de token. Concatena username e password com espaço
  *
- *
- * @param username usuário passado pelo client
+ * @param username nome de usuário
  * @param password senha
- * @return char* token base64 gerado
+ * @return char* token
  */
 char *encoder_helper(char *username, char *password)
 {
@@ -217,6 +232,13 @@ char *encoder_helper(char *username, char *password)
         return encoded;
 }
 
+/**
+ * @brief
+ * Decodifica uma mensagem em base64
+ *
+ * @param buf mensagem codificada
+ * @return char* mensagem decodificada
+ */
 char *decode(char *buf)
 {
         size_t decoded_length;
@@ -225,9 +247,13 @@ char *decode(char *buf)
         return decoded;
 }
 
-// retorna 0 se o token nao existir no arquivo
-// 1 caso já exista
-// 2 em caso de erro
+/**
+ * @brief
+ * verifica se um token existe no arquivo
+ *
+ * @param token a ser verificado
+ * @return int 0 se o token não existir, 1 se existir, 2 em caso de erro na abertura do arquivo
+ */
 int check_if_token_exists(const char *token)
 {
         char buffer[300];
@@ -262,6 +288,12 @@ int check_if_token_exists(const char *token)
         return 0;
 }
 
+/**
+ * @brief Verifica se um destinatário está online.
+ *
+ * @param recipientAddress Endereço do destinatário.
+ * @return int Retorna 1 caso o destinatário esteja online, 0 caso não esteja e 2 em caso de erro.
+ */
 int is_recipient_online(const char *recipientAddress)
 {
         char buffer[300];
@@ -299,6 +331,12 @@ int is_recipient_online(const char *recipientAddress)
 
         return 0;
 }
+
+/**
+ * @brief Função que retorna a lista de usuários online.
+ *
+ * @return char* String com os usuários online, separados por "|" e com quebra de linha.
+ */
 
 char *returnOnlineUsers()
 {
@@ -367,6 +405,12 @@ int save_data_to_file(const char *token, const struct sockaddr_in *adress, int i
         return 0;
 }
 
+/**
+ * @brief Salva os dados brutos em um arquivo
+ *
+ * @param data Dados a serem salvos
+ * @return int Retorna 0 em caso de sucesso e 1 em caso de falha
+ */
 int save_raw_data_to_file(char *data)
 {
         FILE *user_file = fopen(DATA_FILE, "a");
@@ -383,10 +427,7 @@ int save_raw_data_to_file(char *data)
 }
 
 /**
- * @todo
- * Todo arrumar a função que não delelta direito as vezes
  * @brief
- *
  * Remove do arquivo file_name qualquer linha que começa com char *line_start
  *
  * @param file_name nome do arquivo
