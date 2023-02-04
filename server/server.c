@@ -103,7 +103,7 @@ int main(int argc, char **argv)
             perror("accept");
             continue;
         }
-        printf("server: got connection from %s\n", inet_ntoa(their_addr.sin_addr));
+        printf("server: got connection from address %d, port %d\n", their_addr.sin_addr.s_addr, their_addr.sin_port);
         // retorna um processo filho para cuidar da requisição enquanto o processo
         // pai continua cuidando de receber conexões
         if (!fork())
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
                 char *res = buf;
                 if (strcmp(buf, "quit") != 0)
                 {
-                    res = handle_request(buf, &their_addr);
+                    res = handle_request(buf, &their_addr, sockfd);
                 }
 
                 // escreve no file descriptor (nosso caso a conexão TCP)
@@ -146,9 +146,10 @@ int main(int argc, char **argv)
                     exit(-1);
                 }
 
-                if (strcmp("deu bom", res) != 0)
+                if (strcmp("logout performed", res) != 0)
                 {
-                    free(res);
+                    if (res != NULL && strcmp(res, ""))
+                        free(res);
                 }
             }
         }

@@ -4,19 +4,22 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "helper.h"
+#include "../helpers/helper.h"
 #include "base64.h"
 
 const char *DATA_FILE = "data_file.txt";
 
 char *login(char *buf, const struct sockaddr_in *adress);
 char *logout(char *token);
-char *decode_testing(char *buf);
+char *sendMessage(char *buf, int sockfd);
+char *decode(char *buf);
 char *encoder_helper(char *username, char *password);
 int save_data_to_file(const char *token, const struct sockaddr_in *adress, int is_logged);
 int save_raw_data_to_file(char *data);
 int check_if_token_exists(const char *username);
 char *delete_line_from_file(const char *file_name, const char *line_start);
+int is_recipient_online(const char *recipientAddress);
+char *returnOnlineUsers();
 
 /**
  * @brief
@@ -24,10 +27,15 @@ char *delete_line_from_file(const char *file_name, const char *line_start);
  *
  * @param buf input do client
  * '0' (decimal 48) = função de login. Registra e retorna o token de acesso
- * '1' (decimal 49) = função
+ * '1' (decimal 49) = função de logout
+ * '2' (decimal 50) = função de enviar msg
+ * '3' (decimal 51) = função de receber ms
+ * '4' (decimal 52) = função de listar usuários
+ * @param adress estrutura com as informações do endereço do cliente
+ * @param sockfd socket file descriptor
  * @return char* resposta
  */
-char *handle_request(char *buf, const struct sockaddr_in *adress)
+char *handle_request(char *buf, const struct sockaddr_in *adress, int sockfd)
 {
         // funcao requisitada
         int function = (int)buf[0];
@@ -52,7 +60,13 @@ char *handle_request(char *buf, const struct sockaddr_in *adress)
         case 49:
                 result = logout(buf);
                 break;
+        case 50:
+                result = sendMessage(buf, sockfd);
+                break;
 
+        case 52:
+                result = returnOnlineUsers();
+                break;
         default:
                 break;
         }
@@ -65,6 +79,7 @@ char *handle_request(char *buf, const struct sockaddr_in *adress)
  * Cria um token de usuário, seguindo o formato `username senha`
  *
  * @param buf input do client (usuario e senha).
+ * @param adress estrutura com as informações do endereço do cliente
  * @return char* token. Contém o token gerado pela aplicação.
  */
 char *login(char *buf, const struct sockaddr_in *adress)
@@ -91,6 +106,13 @@ char *login(char *buf, const struct sockaddr_in *adress)
         return token;
 }
 
+/**
+ * @brief
+ * Desfaz o processo de login, marcando o usuário como offline
+ *
+ * @param buf token de usuário começando com |
+ * @return char* "logout realizado"
+ */
 char *logout(char *buf)
 {
         char *token = strtok(buf, "|");
@@ -103,18 +125,93 @@ char *logout(char *buf)
 
         free(line);
 
-        return "deu bom";
+        return "logout performed";
 }
 
 /**
  * @brief
- * Encoda em base64 a string no format "username password" e retorna o token
- * Não é completamente seguro, pois o encodign pode ser revertido
+ * Envia uma mensagem a um usuário específico
  *
+ * @param buf mensagem a ser enviada. Deve conter o destinatário no formato `recipient_address|message`
+ * @param sockfd socket file descriptor
+ * @return char* mensagem de sucesso ou fracasso na operação
+ */
+char *sendMessage(char *buf, int sockfd)
+{
+        buf++;
+
+        char *address;
+        char *message;
+
+        char *aux = strtok(buf, "|");
+
+        aux = strtok(NULL, "|");
+        address = aux;
+
+        aux = strtok(NULL, "|");
+        message = aux;
+
+        if (is_recipient_online(address) == 1)
+        {
+                char *s_addr;
+                char *port;
+
+                char *temp = strtok(address, ":");
+                s_addr = temp;
+
+                temp = strtok(NULL, ":");
+                port = temp;
+
+                struct in_addr sin_addr;
+                sin_addr.s_addr = (in_addr_t)atoi(s_addr);
+
+                struct sockaddr_in recipient_addr;
+                recipient_addr.sin_family = AF_INET;
+                recipient_addr.sin_port = (unsigned short)strtoul(port, NULL, 0);
+                recipient_addr.sin_addr = sin_addr;
+                memset(&(recipient_addr.sin_zero), '\0', 8);
+
+                printf("Try to send the message %s to user's port %d and user's address %d\n", message, recipient_addr.sin_port, recipient_addr.sin_addr.s_addr);
+
+                socklen_t sin_size = sizeof(struct sockaddr_in);
+
+                int new_fd, retVal;
+
+                if ((new_fd = accept(sockfd, (struct sockaddr *)&recipient_addr, &sin_size)) == -1)
+                {
+                        printf("deu ruim\n");
+
+                        perror("accept");
+
+                        close(new_fd);
+
+                        return "not sent";
+                }
+                else
+                {
+                        printf("Sending message...\n");
+
+                        if ((retVal = write(new_fd, message, strlen(message))) == -1)
+                        {
+                                perror("send");
+                                close(new_fd);
+                                exit(-1);
+                        }
+
+                        close(new_fd);
+
+                        return "sent";
+                }
+        }
+}
+
+/**
+ * @brief
+ * Auxiliar na geração de token. Concatena username e password com espaço
  *
- * @param username usuário passado pelo client
+ * @param username nome de usuário
  * @param password senha
- * @return char* token base64 gerado
+ * @return char* token
  */
 char *encoder_helper(char *username, char *password)
 {
@@ -135,18 +232,28 @@ char *encoder_helper(char *username, char *password)
         return encoded;
 }
 
-char *decode_testing(char *buf)
+/**
+ * @brief
+ * Decodifica uma mensagem em base64
+ *
+ * @param buf mensagem codificada
+ * @return char* mensagem decodificada
+ */
+char *decode(char *buf)
 {
-
         size_t decoded_length;
         char *decoded = base64_decode(buf, strlen(buf), &decoded_length);
 
         return decoded;
 }
 
-// retorna 0 se o token nao existir no arquivo
-// 1 caso já exista
-// 2 em caso de erro
+/**
+ * @brief
+ * verifica se um token existe no arquivo
+ *
+ * @param token a ser verificado
+ * @return int 0 se o token não existir, 1 se existir, 2 em caso de erro na abertura do arquivo
+ */
 int check_if_token_exists(const char *token)
 {
         char buffer[300];
@@ -182,6 +289,92 @@ int check_if_token_exists(const char *token)
 }
 
 /**
+ * @brief Verifica se um destinatário está online.
+ *
+ * @param recipientAddress Endereço do destinatário.
+ * @return int Retorna 1 caso o destinatário esteja online, 0 caso não esteja e 2 em caso de erro.
+ */
+int is_recipient_online(const char *recipientAddress)
+{
+        char buffer[300];
+        if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
+        {
+                return 0;
+        }
+
+        FILE *tokens_file = fopen(DATA_FILE, "r");
+        if (tokens_file == NULL)
+        {
+                printf("error opening the file\n");
+                return 2;
+        }
+
+        while (fgets(buffer, 300, tokens_file) != NULL)
+        {
+                // remove \n no final
+                int len = strlen(buffer);
+                if (buffer[len - 1] == '\n')
+                        buffer[len - 1] = 0;
+
+                char *address = strtok(buffer, "|");
+                address = strtok(NULL, "|");
+
+                if (strcmp(address, recipientAddress) == 0)
+                {
+                        if (buffer[strlen(buffer) - 2] = '1') // O destinatário está online
+                                return 1;
+                        return 0;
+                }
+        }
+
+        fclose(tokens_file);
+
+        return 0;
+}
+
+/**
+ * @brief Função que retorna a lista de usuários online.
+ *
+ * @return char* String com os usuários online, separados por "|" e com quebra de linha.
+ */
+
+char *returnOnlineUsers()
+{
+        char buffer[300];
+        if (access(DATA_FILE, F_OK) != 0) // checa se o arquivo existe (primeiro usuário)
+        {
+                return 0;
+        }
+
+        FILE *tokens_file = fopen(DATA_FILE, "r");
+        if (tokens_file == NULL)
+        {
+                printf("error opening the file\n");
+                return NULL;
+        }
+        char *response = calloc(10000, 1);
+        response[0] = 0;
+
+        while (fgets(buffer, 300, tokens_file) != NULL)
+        {
+                char *token = strtok(buffer, "|");
+                char *decoded_token = decode(token);
+                char *address = strtok(NULL, "|");
+
+                strcat(response, decoded_token);
+                strcat(response, "|");
+                strcat(response, address);
+                strcat(response, "\n");
+        }
+
+        printf("response: %s\n", response);
+
+        fclose(tokens_file);
+
+        return response;
+}
+
+/**
  * @brief
  * Salva o char *token com endereço e is_logged no arquivo, com o seguindo o formato
  * `token|endereco:porta|is_logged`
@@ -212,6 +405,12 @@ int save_data_to_file(const char *token, const struct sockaddr_in *adress, int i
         return 0;
 }
 
+/**
+ * @brief Salva os dados brutos em um arquivo
+ *
+ * @param data Dados a serem salvos
+ * @return int Retorna 0 em caso de sucesso e 1 em caso de falha
+ */
 int save_raw_data_to_file(char *data)
 {
         FILE *user_file = fopen(DATA_FILE, "a");
@@ -228,10 +427,7 @@ int save_raw_data_to_file(char *data)
 }
 
 /**
- * @todo
- * Todo arrumar a função que não delelta direito as vezes
  * @brief
- *
  * Remove do arquivo file_name qualquer linha que começa com char *line_start
  *
  * @param file_name nome do arquivo
