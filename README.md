@@ -1,6 +1,7 @@
 # c-server
 
-A server built in C
+A server built in C.
+It's not complete. Shouldn't be used the way it is.
 
 ## Login
 
